@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #070d1f;
+  --color-surface: #070d1f;
+  --color-surface-container: #0a1839;
+  --color-surface-container-low: #09122b;
+  --color-surface-container-high: #0b1d48;
+  --color-surface-container-highest: #0a2257;
+  --color-surface-bright: #082768;
+  --color-surface-variant: #0a2257;
+  
+  --color-primary: #7bd0ff;
+  --color-on-primary: #004560;
+  --color-primary-container: #004c69;
+  
+  --color-secondary: #909fb4;
+  --color-secondary-container: #2e3c4e;
+  
+  --color-tertiary: #9bffce;
+  --color-tertiary-container: #005a3c;
+  
+  --color-error: #ee7d77;
+  --color-error-container: #7f2927;
+  
+  --color-on-surface: #dfe4ff;
+  --color-on-surface-variant: #96a9e6;
+  --color-outline: #6073ad;
+  --color-outline-variant: #32457c;
+
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "Roboto Mono", monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-body selection:bg-primary/30;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-surface-variant/40 backdrop-blur-xl border border-outline/20;
+  }
+  
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(123, 208, 255, 0.05), transparent);
+    background-size: 200% 100%;
+  }
+
+  .data-grid-dots {
+    background-image: radial-gradient(var(--color-outline-variant) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap');
