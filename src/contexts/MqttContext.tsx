@@ -197,6 +197,13 @@ setFurnaces(prev => {
     sIdx: hardwareIndex, 
     en 
   }));
+  const payload = JSON.stringify({ 
+    cmd: 'TOGGLE', 
+    sIdx: hardwareIndex, // React 0 -> ESP 1 | React 1 -> ESP 2
+    en 
+  });
+  console.log(`Publishing to furnace/${chipId}/cmd:`, payload);
+
 
   // Update local state (Keep this as sIdx so the UI toggle moves correctly)
   setFurnaces(prev => {
