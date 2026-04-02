@@ -187,13 +187,14 @@ setFurnaces(prev => {
   // --- RETAINED FUNCTIONS (Toggle, Calibrate, Pruning, Names) ---
  const toggleSensor = useCallback((chipId: string, sIdx: number, en: boolean) => {
   if (!client) return;
+  const hardwareIndex = sIdx + 1;
 
   // FIX: Change sIdx to sIdx + 1
   // React's 0 (T1) becomes ESP32's 1
   // React's 1 (T2) becomes ESP32's 2
   client.publish(`furnace/${chipId}/cmd`, JSON.stringify({ 
     cmd: 'TOGGLE', 
-    sIdx: sIdx + 1, 
+    sIdx: hardwareIndex, 
     en 
   }));
 
