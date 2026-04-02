@@ -185,20 +185,36 @@ setFurnaces(prev => {
   };
 
   // --- RETAINED FUNCTIONS (Toggle, Calibrate, Pruning, Names) ---
-  const toggleSensor = useCallback((chipId: string, sIdx: number, en: boolean) => {
-    if (!client) return;
-    client.publish(`furnace/${chipId}/cmd`, JSON.stringify({ cmd: 'TOGGLE', sIdx: sIdx+1, en }));
-    setFurnaces(prev => {
-      if (!prev[chipId]) return prev;
-      const nextEnabled = [...prev[chipId].enabledSensors];
-      nextEnabled[sIdx] = en;
-      return { ...prev, [chipId]: { ...prev[chipId], enabledSensors: nextEnabled } };
-    });
-  }, [client]);
+ const toggleSensor = useCallback((chipId: string, sIdx: number, en: boolean) => {
+  if (!client) return;
 
-  const calibrateSensor = useCallback((chipId: string, sIdx: number, off: number, scl: number) => {
-    if (!client) return;
-    client.publish(`furnace/${chipId}/cmd`, JSON.stringify({ cmd: 'CALIBRATE', sIdx:sIdx +1, off, scl }));
+  // FIX: Change sIdx to sIdx + 1
+  // React's 0 (T1) becomes ESP32's 1
+  // React's 1 (T2) becomes ESP32's 2
+  client.publish(`furnace/${chipId}/cmd`, JSON.stringify({ 
+    cmd: 'TOGGLE', 
+    sIdx: sIdx + 1, 
+    en 
+  }));
+
+  // Update local state (Keep this as sIdx so the UI toggle moves correctly)
+  setFurnaces(prev => {
+    if (!prev[chipId]) return prev;
+    const nextEnabled = [...prev[chipId].enabledSensors];
+    nextEnabled[sIdx] = en;
+    return { ...prev, [chipId]: { ...prev[chipId], enabledSensors: nextEnabled } };
+  });
+}, [client]);
+
+const calibrateSensor = useCallback((chipId: string, sIdx: number, off: number, scl: number) => {
+  if (!client) return;
+
+  client.publish(`furnace/${chipId}/cmd`, JSON.stringify({ 
+    cmd: 'CALIBRATE', 
+    sIdx: sIdx + 1, // FIX: Add + 1 here too
+    off, 
+    scl 
+  }));
     setFurnaces(prev => {
       if (!prev[chipId]) return prev;
       const nextCalib = [...prev[chipId].calibrations];
