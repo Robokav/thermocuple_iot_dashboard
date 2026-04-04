@@ -23,34 +23,65 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
     onNameChange(editName);
     setIsEditing(false);
   };
-
 const isDisconnected = value === -999;
+  // 2. Check if sensor is sending the 'Disabled' code from ESP32
 const isManuallyDisabled = value === -888 || !active;
-const hasValidData = typeof value === 'number' && value > -500;
-
+  // 3. Define what counts as a valid temperature reading
+const isValidNumber = typeof value === 'number' && value > -500 && value !== -888;
+  // --- END OF LOGIC ---
 return (
     <div className={`glass-panel px-3 py-3 rounded-lg flex items-center justify-between transition-all duration-500 ${
-      // Dim the panel for BOTH disconnected and disabled states
-      (isDisconnected || isManuallyDisabled) 
+      // Dim the panel if either Disconnected OR Disabled
+      (!active || isDisconnected || value === -888) 
         ? 'opacity-40 grayscale bg-black/20' 
         : 'border-cyan-500/30 bg-cyan-500/5 shadow-[0_0_15px_rgba(34,211,238,0.05)]'
     }`}>
       <div className="text-left flex-1 mr-2">
-        {/* ... Label Logic ... */}
+        <div className="flex items-center gap-1 group">
+          {isEditing ? (
+            <div className="flex items-center gap-1 w-full" onClick={e => e.stopPropagation()}>
+              <input 
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSave(e)}
+                className="bg-[#0f172a] border border-cyan-500/40 rounded px-1 py-0.5 text-[9px] font-bold text-cyan-400 outline-none w-full uppercase"
+                autoFocus
+              />
+              <button onClick={handleSave} className="p-0.5 text-emerald-400 hover:bg-emerald-400/10 rounded"><Check className="w-3 h-3" /></button>
+            </div>
+          ) : (
+            <>
+              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest truncate max-w-[80px]">{label}</p>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} 
+                // Hide edit button if sensor is disconnected
+                className={`opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-white/20 hover:text-cyan-400 ${isDisconnected ? 'hidden' : ''}`}
+              >
+                <Edit2 className="w-2.5 h-2.5" />
+              </button>
+            </>
+          )}
+        </div>
         
         <AnimatePresence mode="wait">
-          <motion.p className="font-mono text-[10px] mt-0.5">
+          <motion.p 
+            // Key change forces animation when state swaps
+            key={isDisconnected ? 'disc' : isManuallyDisabled ? 'off' : 'val'}
+            initial={{ opacity: 0, y: 2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2 }}
+            className={`font-mono text-[10px] mt-0.5 ${(!active || isDisconnected) ? 'text-white/20 italic' : 'text-cyan-400 font-bold'}`}
+          >
             {isDisconnected ? (
-              // PRIORITY 1: Physical Error
-              <span className="text-red-500/60 font-bold tracking-tighter uppercase">Sensor Disconnected</span>
-            ) : isManuallyDisabled ? (
-              // PRIORITY 2: User Preference
-              <span className="text-white/20 uppercase italic">Manually Disabled</span>
-            ) : hasValidData ? (
-              // PRIORITY 3: Live Data
-              <span className="text-emerald-400 font-bold">{value!.toFixed(2)}°C</span>
+              <span className="text-red-500/60 font-bold uppercase">Sensor Disconnected</span>
+            ) : (isManuallyDisabled) ? (
+              'DISABLED'
+            ) : isValidNumber ? (
+              <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">
+                {value!.toFixed(2)}°C
+              </span>
             ) : (
-              <span className="text-cyan-500/40 animate-pulse">Initializing...</span>
+              <span className="animate-pulse text-cyan-500/60">INITIALIZING...</span>
             )}
           </motion.p>
         </AnimatePresence>
@@ -58,26 +89,23 @@ return (
 
       <button 
         onClick={onToggle} 
-        // BLOCK toggle ONLY if sensor is physically missing (-999)
-        disabled={isDisconnected} 
+        // 4. PREVENT TOGGLE if hardware is missing (-999)
+        disabled={isDisconnected}
         className={`w-8 h-4 rounded-full relative transition-all duration-300 ${
-          isDisconnected 
-            ? 'bg-red-900/10 cursor-not-allowed' 
-            : (active ? 'bg-cyan-500/40' : 'bg-white/10')
+          isDisconnected ? 'bg-red-900/10 cursor-not-allowed' : (active ? 'bg-cyan-500/40' : 'bg-white/10')
         }`}
       >
         <motion.span 
           layout
           className={`absolute top-0.5 w-3 h-3 rounded-full shadow-sm ${
-            isDisconnected 
-              ? 'left-0.5 bg-red-900/40' 
-              : (active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40')
+            isDisconnected ? 'left-0.5 bg-red-900/40' : (active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40')
           }`}
         />
       </button>
     </div>
   );
 });
+
 interface FurnaceCardProps {
   furnace: FurnaceData;
 }
