@@ -65,10 +65,10 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
               'DISABLED'
             ) : isValidNumber ? (
               <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">
-                {value!.toFixed(1)}°C
+                {value!.toFixed(2)}°C
               </span>
             ) : (
-              <span className="animate-pulse text-cyan-500/60">INITIALIZING...</span>
+              <span className="animate-pulse text-cyan-500/60">Sensor Disconnected</span>
             )}
           </motion.p>
         </AnimatePresence>
