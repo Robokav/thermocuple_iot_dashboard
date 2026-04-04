@@ -345,6 +345,28 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
             </motion.div>
           )}
         </AnimatePresence>
+        {/* RESULTS FOOTER */}
+<AnimatePresence>
+  {calib.scale !== 1 && (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-4 p-3 rounded bg-emerald-500/10 border border-emerald-500/20 flex justify-around items-center"
+    >
+      <div className="text-center">
+        <p className="text-[8px] uppercase font-bold text-emerald-500/60">Calculated Scale</p>
+        <p className="text-xs font-mono font-bold text-emerald-400">{calib.scale.toFixed(4)}</p>
+      </div>
+      
+      <div className="w-px h-6 bg-emerald-500/20" />
+
+      <div className="text-center">
+        <p className="text-[8px] uppercase font-bold text-emerald-500/60">Calculated Offset</p>
+        <p className="text-xs font-mono font-bold text-emerald-400">{calib.offset.toFixed(2)}</p>
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
       </div>
     </div>
   );
