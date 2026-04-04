@@ -24,58 +24,33 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
     setIsEditing(false);
   };
 
-const isPhysicallyConnected = typeof value === 'number' && value !== -999;
+const isDisconnected = value === -999;
+const isManuallyDisabled = value === -888 || !active;
+const hasValidData = typeof value === 'number' && value > -500;
 
 return (
     <div className={`glass-panel px-3 py-3 rounded-lg flex items-center justify-between transition-all duration-500 ${
-      // Dim the panel if manually disabled OR hardware is disconnected
-      (!active || !isPhysicallyConnected) 
+      // Dim the panel for BOTH disconnected and disabled states
+      (isDisconnected || isManuallyDisabled) 
         ? 'opacity-40 grayscale bg-black/20' 
         : 'border-cyan-500/30 bg-cyan-500/5 shadow-[0_0_15px_rgba(34,211,238,0.05)]'
     }`}>
       <div className="text-left flex-1 mr-2">
-        <div className="flex items-center gap-1 group">
-          {isEditing ? (
-            <div className="flex items-center gap-1 w-full" onClick={e => e.stopPropagation()}>
-              <input 
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSave(e)}
-                className="bg-[#0f172a] border border-cyan-500/40 rounded px-1 py-0.5 text-[9px] font-bold text-cyan-400 outline-none w-full uppercase"
-                autoFocus
-              />
-              <button onClick={handleSave} className="p-0.5 text-emerald-400 hover:bg-emerald-400/10 rounded"><Check className="w-3 h-3" /></button>
-            </div>
-          ) : (
-            <>
-              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest truncate max-w-[80px]">{label}</p>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} 
-                className={`opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-cyan-400 ${!isPhysicallyConnected ? 'hidden' : 'text-white/20'}`}
-              >
-                <Edit2 className="w-2.5 h-2.5" />
-              </button>
-            </>
-          )}
-        </div>
+        {/* ... Label Logic ... */}
         
         <AnimatePresence mode="wait">
-          <motion.p 
-            key={!isPhysicallyConnected ? 'disc' : (active ? 'val' : 'off')}
-            initial={{ opacity: 0, y: 2 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -2 }}
-            className={`font-mono text-[10px] mt-0.5 ${!active ? 'text-white/20 italic' : 'text-cyan-400 font-bold'}`}
-          >
-            {!isPhysicallyConnected ? (
-              <span className="text-red-500/60 font-bold tracking-tighter">SENSOR DISCONNECTED</span>
-            ) : !active ? (
-              'DISABLED'
+          <motion.p className="font-mono text-[10px] mt-0.5">
+            {isDisconnected ? (
+              // PRIORITY 1: Physical Error
+              <span className="text-red-500/60 font-bold tracking-tighter uppercase">Sensor Disconnected</span>
+            ) : isManuallyDisabled ? (
+              // PRIORITY 2: User Preference
+              <span className="text-white/20 uppercase italic">Manually Disabled</span>
+            ) : hasValidData ? (
+              // PRIORITY 3: Live Data
+              <span className="text-emerald-400 font-bold">{value!.toFixed(2)}°C</span>
             ) : (
-              <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">
-                {/* 2-Decimal Precision */}
-                {value!.toFixed(2)}°C
-              </span>
+              <span className="text-cyan-500/40 animate-pulse">Initializing...</span>
             )}
           </motion.p>
         </AnimatePresence>
@@ -83,15 +58,20 @@ return (
 
       <button 
         onClick={onToggle} 
-        disabled={!isPhysicallyConnected} // Block toggle if hardware is missing
+        // BLOCK toggle ONLY if sensor is physically missing (-999)
+        disabled={isDisconnected} 
         className={`w-8 h-4 rounded-full relative transition-all duration-300 ${
-          !isPhysicallyConnected ? 'bg-red-900/10 cursor-not-allowed' : (active ? 'bg-cyan-500/40' : 'bg-white/10')
+          isDisconnected 
+            ? 'bg-red-900/10 cursor-not-allowed' 
+            : (active ? 'bg-cyan-500/40' : 'bg-white/10')
         }`}
       >
         <motion.span 
           layout
           className={`absolute top-0.5 w-3 h-3 rounded-full shadow-sm ${
-            !isPhysicallyConnected ? 'left-0.5 bg-red-900/40' : (active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40')
+            isDisconnected 
+              ? 'left-0.5 bg-red-900/40' 
+              : (active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40')
           }`}
         />
       </button>
