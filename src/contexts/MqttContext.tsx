@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import mqtt, { MqttClient } from 'mqtt';
 import { FurnaceData, ConnectionPipeline } from '../types';
 import { db } from '../lib/db';
-//import * as InfluxLib from '../lib/influx';
+import { fetchLatestFurnaceData } from '../lib/influx';
 
 interface MqttContextType {
   client: MqttClient | null;
@@ -31,36 +31,54 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const pass = import.meta.env.VITE_EMQX_PASS;
   const port = import.meta.env.VITE_EMQX_PORT || 8084;
 
-  // --- 1. HYDRATION: Load from InfluxDB on Startup ---
-  // useEffect(() => {
-  //   const hydrate = async () => {
-  //     try {
-  //       const history: any = await InfluxLib.fetchLatestFurnaceData();
-  //       if (history && history.length > 0) {
-  //         setFurnaces(prev => {
-  //           const next = { ...prev };
-  //           history.forEach((node: any) => {
-  //             if (!next[node.chipId]) {
-  //               next[node.chipId] = {
-  //                 id: node.chipId, chipId: node.chipId,
-  //                 name: `Node ${node.chipId.slice(-4)}`,
-  //                 status: 'offline', lastSeen: Date.now() - 60000,
-  //                 temps: { t1: node.t1, t2: node.t2, t3: node.t3, t4: node.t4 },
-  //                 rawTemps: { t1: node.r1, t2: node.r2, t3: node.r3, t4: node.r4 },
-  //                 enabledSensors: [true, true, true, true],
-  //                 calibrations: Array(4).fill({ scale: 1, offset: 0 }),
-  //                 sensorNames: ['T1_CORE', 'T2_UPPER', 'T3_LOWER', 'T4_EXHAUST'],
-  //               };
-  //             }
-  //           });
-  //           return next;
-  //         });
-  //       }
-  //     } catch (err) { console.error('Hydration Failed:', err); }
-  //   };
-  //   hydrate();
-  // }, []);
-
+useEffect(() => {
+  const hydrate = async () => {
+    try {
+      // Use the library we imported
+      const history: any = await fetchLatestFurnaceData(); 
+      
+      if (history && history.length > 0) {
+        setFurnaces(prev => {
+          const next = { ...prev };
+          history.forEach((node: any) => {
+            // Only add if it's not already there from a live MQTT message
+            if (!next[node.chipId]) {
+              next[node.chipId] = {
+                id: node.chipId,
+                chipId: node.chipId,
+                name: `Node ${node.chipId.slice(-4)}`,
+                status: 'offline', // It's offline until the first MQTT ping
+                lastSeen: Date.now() - 60000,
+                temps: { 
+                  t1: node.t1 ?? null, 
+                  t2: node.t2 ?? null, 
+                  t3: node.t3 ?? null, 
+                  t4: node.t4 ?? null 
+                },
+                rawTemps: { 
+                  t1: node.r1 ?? 0, 
+                  t2: node.r2 ?? 0, 
+                  t3: node.r3 ?? 0, 
+                  t4: node.r4 ?? 0 
+                },
+                enabledSensors: [true, true, true, true],
+                calibrations: Array(4).fill({ scale: 1, offset: 0 }),
+                sensorNames: ['T1_CORE', 'T2_UPPER', 'T3_LOWER', 'T4_EXHAUST'],
+              };
+            }
+          });
+          return next;
+        });
+        // Turn the discovery icon green since we found nodes!
+        setPipeline(prev => ({ ...prev, discovery: 'success' }));
+      }
+    } catch (err) { 
+      console.error('Hydration Failed:', err); 
+    }
+  };
+  
+  hydrate();
+}, []);
   // --- 2. MQTT CONNECTION & HANDLING ---
   useEffect(() => {
     if (!host) return;
@@ -76,11 +94,14 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     mqttClient.on('message', (topic, message) => {
+      const payload = message.toString();
       let data: any;
+      
       try { data = JSON.parse(message.toString()); } catch (e) { return; }
 
       // Handle Discovery
       if (topic === 'discovery/nodes') {
+        setPipeline(prev => ({ ...prev, discovery: 'success' }));
         const nodes = Array.isArray(data) ? data : [data];
         setFurnaces(prev => {
           const next = { ...prev };
@@ -103,31 +124,32 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Handle Telemetry (The Real-time Data)
-      const telemetryMatch = topic.match(/^furnace\/(.+)\/telemetry$/);
-      if (telemetryMatch) {
-        const chipId = telemetryMatch[1];
-        setFurnaces(prev => {
-          const f = prev[chipId];
-          if (!f) return prev;
-          return {
-            ...prev,
-            [chipId]: {
-              ...f,
-              status: 'online', lastSeen: Date.now(),
-              // MAP CAPITAL T FROM ESP32 TO LOWERCASE T FOR REACT UI
-              temps: { 
-                t1: data.temps.T1, t2: data.temps.T2, 
-                t3: data.temps.T3, t4: data.temps.T4 
-              },
-              rawTemps: { 
-                t1: data.raw.T1, t2: data.raw.T2, 
-                t3: data.raw.T3, t4: data.raw.T4 
-              }
-            }
-          };
-        });
-      }
+const telemetryMatch = topic.match(/^furnace\/(.+)\/telemetry$/);
+  if (telemetryMatch) {
+    const chipId = telemetryMatch[1];
+    
+    // If the ESP32 sends "epoch" or "timestamp", the NTP icon turns green
+    if (data.epoch || data.timestamp || data.temps) {
+      setPipeline(prev => ({ ...prev, ntp: 'success' }));
+    }
+
+    setFurnaces(prev => {
+      const f = prev[chipId];
+      if (!f) return prev;
+      return {
+        ...prev,
+        [chipId]: {
+          ...f,
+          status: 'online',
+          lastSeen: Date.now(),
+          // Ensure keys match ESP32 (Capital T) to React (Lowercase t)
+          temps: { t1: data.temps.T1, t2: data.temps.T2, t3: data.temps.T3, t4: data.temps.T4 },
+          rawTemps: { t1: data.raw.T1, t2: data.raw.T2, t3: data.raw.T3, t4: data.raw.T4 }
+        }
+      };
     });
+  }
+});
 
     setClient(mqttClient);
     return () => { mqttClient.end(); };

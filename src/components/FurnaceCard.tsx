@@ -24,7 +24,6 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
     setIsEditing(false);
   };
 
-  // Filter out -888 (Disabled) and -999 (Error) values
   const isValidNumber = typeof value === 'number' && value > -500;
 
   return (
@@ -122,7 +121,7 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
   }, [calib, furnace.chipId, selectedSensor, calibrateSensor]);
 
   const captureRaw = (type: 'low' | 'high') => {
-    // Matches the Capital T/R keys from your ESP32 JSON
+    // Matches the Capital R keys from ESP32: { "raw": { "R1": 123.4 } }
     const rawKey = `t${selectedSensor + 1}`; 
     const rawVal = (furnace.rawTemps as any)[rawKey] || 0;
     setCalib(prev => ({
@@ -205,6 +204,7 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
         <AnimatePresence mode="wait">
           {isHistoryOpen && (
             <motion.div 
+              key="history"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -214,7 +214,89 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
             </motion.div>
           )}
 
-          {/* ... Calibration Wizard remains the same ... */}
+          {isWizardOpen && (
+            <motion.div 
+              key="wizard"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-black/40 rounded-lg border border-cyan-500/20"
+            >
+              <div className="p-4 space-y-4">
+                <div className="flex bg-white/5 p-1 rounded-md">
+                  {(furnace.sensorNames || ['T1', 'T2', 'T3', 'T4']).map((t, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => {
+                        setSelectedSensor(i);
+                        setCalib(furnace.calibrations[i]);
+                      }}
+                      className={`flex-1 py-1.5 text-[9px] font-bold uppercase tracking-widest rounded transition-all truncate px-1 ${
+                        selectedSensor === i ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] uppercase font-bold text-white/40">Target Low (°C)</label>
+                      <input 
+                        type="number"
+                        value={calib.targetLow}
+                        onChange={(e) => setCalib(prev => ({ ...prev, targetLow: parseFloat(e.target.value) || 0 }))}
+                        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] uppercase font-bold text-white/40">Raw Low (ADC)</label>
+                      <div className="flex gap-1">
+                        <input readOnly value={(calib.rawLow || 0).toFixed(2)} className="flex-1 bg-black/20 border border-white/5 rounded px-2 py-2 text-xs font-mono text-white/30" />
+                        <button onClick={() => captureRaw('low')} className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20"><Target className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[8px] uppercase font-bold text-white/40">Target High (°C)</label>
+                      <input 
+                        type="number"
+                        value={calib.targetHigh}
+                        onChange={(e) => setCalib(prev => ({ ...prev, targetHigh: parseFloat(e.target.value) || 0 }))}
+                        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] uppercase font-bold text-white/40">Raw High (ADC)</label>
+                      <div className="flex gap-1">
+                        <input readOnly value={(calib.rawHigh || 0).toFixed(2)} className="flex-1 bg-black/20 border border-white/5 rounded px-2 py-2 text-xs font-mono text-white/30" />
+                        <button onClick={() => captureRaw('high')} className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20"><Target className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={calculateCalibration}
+                    className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-400 transition-all"
+                  >
+                    <Save className="w-3.5 h-3.5" /> Apply
+                  </button>
+                  <button 
+                    onClick={() => setCalib(furnace.calibrations[selectedSensor])}
+                    className="px-4 bg-white/5 text-white/40 rounded border border-white/10 hover:text-white"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
