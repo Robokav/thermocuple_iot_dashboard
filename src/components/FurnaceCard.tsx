@@ -240,45 +240,73 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-[8px] uppercase font-bold text-white/40">Target Low (°C)</label>
-                      <input 
-                        type="number"
-                        value={calib.targetLow}
-                        onChange={(e) => setCalib(prev => ({ ...prev, targetLow: parseFloat(e.target.value) || 0 }))}
-                        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[8px] uppercase font-bold text-white/40">Raw Low (ADC)</label>
-                      <div className="flex gap-1">
-                        <input readOnly value={(calib.rawLow || 0).toFixed(2)} className="flex-1 bg-black/20 border border-white/5 rounded px-2 py-2 text-xs font-mono text-white/30" />
-                        <button onClick={() => captureRaw('low')} className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20"><Target className="w-3 h-3" /></button>
-                      </div>
-                    </div>
-                  </div>
+<div className="grid grid-cols-2 gap-4">
+  <div className="space-y-3">
+    {/* TARGET LOW */}
+    <div className="space-y-1">
+      <label className="text-[8px] uppercase font-bold text-white/40">Target Low (°C)</label>
+      <input 
+        type="number"
+        value={calib.targetLow}
+        onChange={(e) => setCalib(prev => ({ ...prev, targetLow: parseFloat(e.target.value) || 0 }))}
+        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
+      />
+    </div>
+    
+    {/* RAW LOW - NOW EDITABLE */}
+    <div className="space-y-1">
+      <label className="text-[8px] uppercase font-bold text-white/40">Raw Low (ADC)</label>
+      <div className="flex gap-1">
+        <input 
+          type="number"
+          value={calib.rawLow} 
+          onChange={(e) => setCalib(prev => ({ ...prev, rawLow: parseFloat(e.target.value) || 0 }))}
+          className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-2 text-xs font-mono text-emerald-400 outline-none focus:border-cyan-500/50" 
+        />
+        <button 
+          onClick={() => captureRaw('low')} 
+          className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20 hover:bg-cyan-500/20"
+          title="Capture Live"
+        >
+          <Target className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  </div>
 
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-[8px] uppercase font-bold text-white/40">Target High (°C)</label>
-                      <input 
-                        type="number"
-                        value={calib.targetHigh}
-                        onChange={(e) => setCalib(prev => ({ ...prev, targetHigh: parseFloat(e.target.value) || 0 }))}
-                        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[8px] uppercase font-bold text-white/40">Raw High (ADC)</label>
-                      <div className="flex gap-1">
-                        <input readOnly value={(calib.rawHigh || 0).toFixed(2)} className="flex-1 bg-black/20 border border-white/5 rounded px-2 py-2 text-xs font-mono text-white/30" />
-                        <button onClick={() => captureRaw('high')} className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20"><Target className="w-3 h-3" /></button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+  <div className="space-y-3">
+    {/* TARGET HIGH */}
+    <div className="space-y-1">
+      <label className="text-[8px] uppercase font-bold text-white/40">Target High (°C)</label>
+      <input 
+        type="number"
+        value={calib.targetHigh}
+        onChange={(e) => setCalib(prev => ({ ...prev, targetHigh: parseFloat(e.target.value) || 0 }))}
+        className="w-full bg-black/40 border border-white/10 rounded px-2 py-2 text-xs font-mono text-cyan-400 outline-none"
+      />
+    </div>
+
+    {/* RAW HIGH - NOW EDITABLE */}
+    <div className="space-y-1">
+      <label className="text-[8px] uppercase font-bold text-white/40">Raw High (ADC)</label>
+      <div className="flex gap-1">
+        <input 
+          type="number"
+          value={calib.rawHigh} 
+          onChange={(e) => setCalib(prev => ({ ...prev, rawHigh: parseFloat(e.target.value) || 0 }))}
+          className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-2 text-xs font-mono text-emerald-400 outline-none focus:border-cyan-500/50" 
+        />
+        <button 
+          onClick={() => captureRaw('high')} 
+          className="px-2 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20 hover:bg-cyan-500/20"
+          title="Capture Live"
+        >
+          <Target className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
                 <div className="flex gap-2 pt-2">
                   <button 

@@ -125,30 +125,51 @@ useEffect(() => {
 
       // Handle Telemetry (The Real-time Data)
 const telemetryMatch = topic.match(/^furnace\/(.+)\/telemetry$/);
-  if (telemetryMatch) {
-    const chipId = telemetryMatch[1];
-    
-    // If the ESP32 sends "epoch" or "timestamp", the NTP icon turns green
-    if (data.epoch || data.timestamp || data.temps) {
-      setPipeline(prev => ({ ...prev, ntp: 'success' }));
-    }
 
-    setFurnaces(prev => {
-      const f = prev[chipId];
-      if (!f) return prev;
-      return {
-        ...prev,
-        [chipId]: {
-          ...f,
-          status: 'online',
-          lastSeen: Date.now(),
-          // Ensure keys match ESP32 (Capital T) to React (Lowercase t)
-          temps: { t1: data.temps.T1, t2: data.temps.T2, t3: data.temps.T3, t4: data.temps.T4 },
-          rawTemps: { t1: data.raw.T1, t2: data.raw.T2, t3: data.raw.T3, t4: data.raw.T4 }
-        }
-      };
-    });
+if (telemetryMatch) {
+  const topicId = telemetryMatch[1];
+  // SAFETY: Use the ID from the JSON if it exists, otherwise use the Topic ID
+  const chipId = data.nodeId || topicId;
+  
+  // 1. UNLOCK NTP ICON
+  // We check data.epoch > 0 to ensure the ESP32 actually has a real time sync
+  if (data.epoch && data.epoch > 0) {
+    setPipeline(prev => ({ ...prev, ntp: 'success' }));
   }
+
+  setFurnaces(prev => {
+    const f = prev[chipId];
+    
+    // IF THE CARD DOESN'T EXIST YET, DON'T DISCARD THE DATA
+    // This allows the dashboard to "auto-create" cards if discovery was missed
+    if (!f) return prev; 
+
+    return {
+      ...prev,
+      [chipId]: {
+        ...f,
+        status: 'online',
+        // MULTIPLY BY 1000: ESP32 sends seconds, JS needs milliseconds
+        lastSeen: data.epoch ? data.epoch * 1000 : Date.now(),
+        
+        // OPTIONAL CHAINING (?): Prevents crash if 'data.temps' is missing
+        temps: { 
+          t1: data.temps?.T1, 
+          t2: data.temps?.T2, 
+          t3: data.temps?.T3, 
+          t4: data.temps?.T4 
+        },
+        
+        rawTemps: { 
+          t1: data.raw?.T1, 
+          t2: data.raw?.T2, 
+          t3: data.raw?.T3, 
+          t4: data.raw?.T4 
+        }
+      }
+    };
+  });
+}
 });
 
     setClient(mqttClient);
