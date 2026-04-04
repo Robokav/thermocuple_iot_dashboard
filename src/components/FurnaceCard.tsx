@@ -24,11 +24,14 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
     setIsEditing(false);
   };
 
-  const isValidNumber = typeof value === 'number' && value > -500;
+const isPhysicallyConnected = typeof value === 'number' && value !== -999;
 
-  return (
+return (
     <div className={`glass-panel px-3 py-3 rounded-lg flex items-center justify-between transition-all duration-500 ${
-      !active ? 'opacity-40 grayscale bg-black/20' : 'border-cyan-500/30 bg-cyan-500/5 shadow-[0_0_15px_rgba(34,211,238,0.05)]'
+      // Dim the panel if manually disabled OR hardware is disconnected
+      (!active || !isPhysicallyConnected) 
+        ? 'opacity-40 grayscale bg-black/20' 
+        : 'border-cyan-500/30 bg-cyan-500/5 shadow-[0_0_15px_rgba(34,211,238,0.05)]'
     }`}>
       <div className="text-left flex-1 mr-2">
         <div className="flex items-center gap-1 group">
@@ -46,7 +49,10 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
           ) : (
             <>
               <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest truncate max-w-[80px]">{label}</p>
-              <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-white/20 hover:text-cyan-400">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} 
+                className={`opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-cyan-400 ${!isPhysicallyConnected ? 'hidden' : 'text-white/20'}`}
+              >
                 <Edit2 className="w-2.5 h-2.5" />
               </button>
             </>
@@ -55,20 +61,21 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
         
         <AnimatePresence mode="wait">
           <motion.p 
-            key={active ? (isValidNumber ? 'val' : 'load') : 'off'}
+            key={!isPhysicallyConnected ? 'disc' : (active ? 'val' : 'off')}
             initial={{ opacity: 0, y: 2 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -2 }}
             className={`font-mono text-[10px] mt-0.5 ${!active ? 'text-white/20 italic' : 'text-cyan-400 font-bold'}`}
           >
-            {!active ? (
+            {!isPhysicallyConnected ? (
+              <span className="text-red-500/60 font-bold tracking-tighter">SENSOR DISCONNECTED</span>
+            ) : !active ? (
               'DISABLED'
-            ) : isValidNumber ? (
+            ) : (
               <span className="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.3)]">
+                {/* 2-Decimal Precision */}
                 {value!.toFixed(2)}°C
               </span>
-            ) : (
-              <span className="animate-pulse text-cyan-500/60">Sensor Disconnected</span>
             )}
           </motion.p>
         </AnimatePresence>
@@ -76,17 +83,21 @@ const TempToggle = React.memo(({ label, value, active, onToggle, onNameChange }:
 
       <button 
         onClick={onToggle} 
-        className={`w-8 h-4 rounded-full relative transition-all duration-300 ${active ? 'bg-cyan-500/40' : 'bg-white/10'}`}
+        disabled={!isPhysicallyConnected} // Block toggle if hardware is missing
+        className={`w-8 h-4 rounded-full relative transition-all duration-300 ${
+          !isPhysicallyConnected ? 'bg-red-900/10 cursor-not-allowed' : (active ? 'bg-cyan-500/40' : 'bg-white/10')
+        }`}
       >
         <motion.span 
           layout
-          className={`absolute top-0.5 w-3 h-3 rounded-full shadow-sm ${active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40'}`}
+          className={`absolute top-0.5 w-3 h-3 rounded-full shadow-sm ${
+            !isPhysicallyConnected ? 'left-0.5 bg-red-900/40' : (active ? 'right-0.5 bg-cyan-400' : 'left-0.5 bg-white/40')
+          }`}
         />
       </button>
     </div>
   );
 });
-
 interface FurnaceCardProps {
   furnace: FurnaceData;
 }
