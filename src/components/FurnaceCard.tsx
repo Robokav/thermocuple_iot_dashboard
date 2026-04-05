@@ -327,46 +327,58 @@ export const FurnaceCard: React.FC<FurnaceCardProps> = ({ furnace }) => {
   </div>
 </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={calculateCalibration}
-                    className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-400 transition-all"
-                  >
-                    <Save className="w-3.5 h-3.5" /> Apply
-                  </button>
-                  <button 
-                    onClick={() => setCalib(furnace.calibrations[selectedSensor])}
-                    className="px-4 bg-white/5 text-white/40 rounded border border-white/10 hover:text-white"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+             <div className="flex gap-2 pt-2">
+  {/* APPLY BUTTON */}
+  <button 
+    onClick={calculateCalibration}
+    className="flex-[2] flex items-center justify-center gap-2 bg-emerald-500 text-white py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20"
+  >
+    <Save className="w-3.5 h-3.5" /> Apply Calibration
+  </button>
+
+  {/* RESET BUTTON (Scale 1, Offset 0) */}
+  <button 
+    onClick={() => {
+      // 1. Update Local State
+      setCalib(prev => ({ ...prev, scale: 1, offset: 0 }));
+      // 2. Send Reset Command to ESP32
+      calibrateSensor(furnace.chipId, selectedSensor, 0, 1);
+    }}
+    title="Reset to Raw (Scale: 1, Offset: 0)"
+    className="flex-1 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 text-red-500 py-2 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+  >
+    <RotateCcw className="w-3.5 h-3.5" /> Reset
+  </button>
+
+  {/* UNDO BUTTON (Back to last saved) */}
+  <button 
+    onClick={() => setCalib(furnace.calibrations[selectedSensor])}
+    className="px-4 bg-white/5 text-white/40 rounded border border-white/10 hover:text-white transition-colors"
+    title="Undo Changes"
+  >
+    <X className="w-3.5 h-3.5" />
+  </button>
+</div>
+{/* RESULTS FOOTER (Moved inside the wizard) */}
+                {calib.scale !== 1 && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 rounded bg-emerald-500/10 border border-emerald-500/20 flex justify-around items-center">
+                    <div className="text-center">
+                      <p className="text-[8px] uppercase font-bold text-emerald-500/60">Scale</p>
+                      <p className="text-xs font-mono font-bold text-emerald-400">{calib.scale.toFixed(4)}</p>
+                    </div>
+                    <div className="w-px h-6 bg-emerald-500/20" />
+                    <div className="text-center">
+                      <p className="text-[8px] uppercase font-bold text-emerald-500/60">Offset</p>
+                      <p className="text-xs font-mono font-bold text-emerald-400">{calib.offset.toFixed(2)}</p>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
         {/* RESULTS FOOTER */}
-<AnimatePresence>
-  {calib.scale !== 1 && (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-4 p-3 rounded bg-emerald-500/10 border border-emerald-500/20 flex justify-around items-center"
-    >
-      <div className="text-center">
-        <p className="text-[8px] uppercase font-bold text-emerald-500/60">Calculated Scale</p>
-        <p className="text-xs font-mono font-bold text-emerald-400">{calib.scale.toFixed(4)}</p>
-      </div>
-      
-      <div className="w-px h-6 bg-emerald-500/20" />
 
-      <div className="text-center">
-        <p className="text-[8px] uppercase font-bold text-emerald-500/60">Calculated Offset</p>
-        <p className="text-xs font-mono font-bold text-emerald-400">{calib.offset.toFixed(2)}</p>
-      </div>
-    </motion.div>
-  )}
-</AnimatePresence>
       </div>
     </div>
   );
