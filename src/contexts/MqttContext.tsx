@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import mqtt, { MqttClient } from 'mqtt';
 import { FurnaceData, ConnectionPipeline } from '../types';
 import { db } from '../lib/db';
@@ -9,6 +9,7 @@ interface MqttContextType {
   furnaces: Record<string, FurnaceData>;
   pipeline: ConnectionPipeline;
   telemetryHistory: Record<string, { timestamp: number; temps: (number | null)[] }[]>;
+  clearHistory: (chipId: string) => void;
   toggleSensor: (chipId: string, sIdx: number, en: boolean) => void;
   calibrateSensor: (chipId: string, sIdx: number, off: number, scl: number) => void;
   updateFriendlyName: (chipId: string, name: string) => void;
@@ -18,6 +19,7 @@ interface MqttContextType {
 
 const MqttContext = createContext<MqttContextType | undefined>(undefined);
 
+
 export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [client, setClient] = useState<MqttClient | null>(null);
   const [furnaces, setFurnaces] = useState<Record<string, FurnaceData>>({});
@@ -25,6 +27,38 @@ export const MqttProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [pipeline, setPipeline] = useState<ConnectionPipeline>({
     wifi: 'idle', ntp: 'idle', mqtts: 'idle', discovery: 'idle',
   });
+  // --- INSERT HERE ---
+const historyBuffer = useRef<Record<string, any[]>>({});
+
+  const flushBufferToState = useCallback(() => {
+    setTelemetryHistory(prev => {
+      let hasUpdates = false;
+      const newState = { ...prev };
+      
+      Object.keys(historyBuffer.current).forEach(chipId => {
+        const bufferedData = historyBuffer.current[chipId];
+        if (bufferedData && bufferedData.length > 0) {
+          const existing = prev[chipId] || [];
+          newState[chipId] = [...existing, ...bufferedData].slice(-100);
+          historyBuffer.current[chipId] = []; // Clear the buffer
+          hasUpdates = true;
+        }
+      });
+      
+      return hasUpdates ? newState : prev;
+    });
+  }, []);
+  useEffect(() => {
+  const interval = setInterval(flushBufferToState, 1000);
+  return () => clearInterval(interval);
+}, [flushBufferToState]);
+  // --- END INSERT ---
+  const clearHistory = useCallback((chipId: string) => {
+    setTelemetryHistory(prev => ({
+      ...prev,
+      [chipId]: [] // Wipes the array for this specific furnace
+    }));
+  }, []);
 
   const host = import.meta.env.VITE_EMQX_HOST;
   const user = import.meta.env.VITE_EMQX_USER;
@@ -96,6 +130,7 @@ useEffect(() => {
     mqttClient.on('message', (topic, message) => {
       const payload = message.toString();
       let data: any;
+      
       
       try { data = JSON.parse(message.toString()); } catch (e) { return; }
 
@@ -169,6 +204,19 @@ if (telemetryMatch) {
       }
     };
   });
+  const newPoint = {
+      timestamp: data.epoch ? data.epoch * 1000 : Date.now(),
+      temps: [
+        data.temps?.T1 ?? null,
+        data.temps?.T2 ?? null,
+        data.temps?.T3 ?? null,
+        data.temps?.T4 ?? null
+      ]
+    };
+    if (!historyBuffer.current[chipId]) {
+      historyBuffer.current[chipId] = [];
+    }
+    historyBuffer.current[chipId].push(newPoint);
 }
 });
 
@@ -241,9 +289,9 @@ if (telemetryMatch) {
   }, []);
 
   const value = useMemo(() => ({
-    client, furnaces, pipeline, telemetryHistory, toggleSensor,
+    client, furnaces, pipeline, telemetryHistory, clearHistory, toggleSensor,
     calibrateSensor, updateFriendlyName, updateSensorName, clearNodes,
-  }), [client, furnaces, pipeline, telemetryHistory, toggleSensor, calibrateSensor, updateFriendlyName, updateSensorName, clearNodes]);
+  }), [client, furnaces, pipeline, telemetryHistory, clearHistory, toggleSensor, calibrateSensor, updateFriendlyName, updateSensorName, clearNodes]);
 
   return <MqttContext.Provider value={value}>{children}</MqttContext.Provider>;
 };
