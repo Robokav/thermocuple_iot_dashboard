@@ -57,7 +57,13 @@ export const Analytics: React.FC = () => {
   
   const latestData = liveHistory[liveHistory.length - 1];
   const currentTemp = latestData?.temps[selectedSensor];
-  const isOffline = currentTemp === null || currentTemp === undefined || (typeof currentTemp === 'number' && currentTemp < -100);
+  const isDisconnected = currentTemp === -999;
+  const isOffline = currentTemp === -888 || currentTemp === null || currentTemp === undefined || currentTemp < -100;
+  const displayValue = isDisconnected 
+  ? "DISCONNECTED" 
+  : isOffline 
+    ? "OFFLINE" 
+    : currentTemp?.toFixed(2);
   const liveLabels = useMemo(() => {
     if (liveHistory.length === 0) return [];
     const startTime = liveHistory[0].timestamp;
@@ -254,26 +260,20 @@ const chartOptions: ChartOptions<'line'> = {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono text-5xl font-black text-white tracking-tighter">
-                  
-   
-    {liveHistory.length > 0 ? (
-    isOffline ? (
-      <span className="text-red-500/50 uppercase text-4xl">Offline</span>
-    ) : (
-      currentTemp?.toFixed(2)
-    )
+                 <div className="text-7xl font-black tracking-tighter flex items-baseline">
+  {liveHistory.length > 0 ? (
+    <span className={`uppercase ${isDisconnected || isOffline ? 'text-red-500/40 text-4xl italic' : 'text-white'}`}>
+      {displayValue}
+    </span>
   ) : (
-    '00.00'
+    <span className="text-white/20 uppercase text-4xl italic">No Stream</span>
   )}
 
-  {/* Only show °C if not offline and data exists */}
-  {liveHistory.length > 0 && !isOffline && (
+  {/* Only show the °C unit if the sensor is actually working */}
+  {!isDisconnected && !isOffline && liveHistory.length > 0 && (
     <span className="text-2xl text-cyan-400/30 ml-2">°C</span>
   )}
-
- 
-                  </div>
+</div> 
                 </div>
               </div>
 
