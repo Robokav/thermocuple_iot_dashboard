@@ -208,11 +208,11 @@ if (telemetryMatch) {
   });
 const newPoint = {
   timestamp: data.epoch ? data.epoch * 1000 : Date.now(),
-  temps: [
-    (data.temps?.T1 > -50 && data.temps?.T1 < 1200 && furnace?.enabledSensors[0]) ? data.temps.T1 : null,
-    (data.temps?.T2 > -50 && data.temps?.T2 < 1200 && furnace?.enabledSensors[1]) ? data.temps.T2 : null,
-    (data.temps?.T3 > -50 && data.temps?.T3 < 1200 && furnace?.enabledSensors[2]) ? data.temps.T3 : null,
-    (data.temps?.T4 > -50 && data.temps?.T4 < 1200 && furnace?.enabledSensors[3]) ? data.temps.T4 : null
+temps: [
+    data.temps?.T1 ?? null,
+    data.temps?.T2 ?? null,
+    data.temps?.T3 ?? null,
+    data.temps?.T4 ?? null
   ]
 
     };
