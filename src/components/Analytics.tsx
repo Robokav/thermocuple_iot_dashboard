@@ -119,16 +119,85 @@ export const Analytics: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    if (queryResults.length === 0) return;
-    const csv = Papa.unparse(queryResults);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `furnace_data_${startDate}_to_${endDate}.csv`);
-    link.click();
-  };
+const handleExportCSV = () => {
+  if (queryResults.length === 0) {
+    alert("No data available to export. Please run a query first.");
+    return;
+  }
 
+  // Get the very first timestamp to calculate the "0s" offset
+  const firstTimestamp = new Date(queryResults[0]._time).getTime();
+
+  // 1. Format the data for Excel/Human readability
+  const formattedData = queryResults.map(row => {
+    const currentTime = new Date(row._time).getTime();
+    
+    // Calculate seconds from the start of this specific log
+    const elapsedSeconds = Math.floor((currentTime - firstTimestamp) / 1000);
+
+    // Create a clean object for the CSV row
+    return {
+      // Human Readable Date/Time
+      "Date_Time": new Date(row._time).toLocaleString('en-GB', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      }).replace(',', ''),
+      
+      // The "0s Start" column you requested
+      "Elapsed_Seconds": elapsedSeconds,
+      
+      // Dynamic Sensor Data (T1, T2, etc.)
+      ...Object.keys(row)
+        .filter(key => !['_time', '_start', '_stop', '_measurement', '_field', 'result', 'table'].includes(key))
+        .reduce((obj, key) => ({ ...obj, [key]: row[key] }), {})
+    };
+  });
+
+  // 2. Generate and Download
+  const csv = Papa.unparse(formattedData);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const fileDate = new Date().toISOString().split('T')[0];
+  
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute('download', `Furnace_Analytical_Report_${fileDate}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+// UPDATED: Defining the chart options using the imported type
+const chartOptions: ChartOptions<'line'> = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: {
+    duration: 0 // Crucial for smooth real-time MQTT sliding
+  },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      enabled: false, // We use your custom hoverInfo UI instead
+    }
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { 
+        color: '#94A3B8', 
+        font: { size: 8, family: 'JetBrains Mono' },
+        autoSkip: true,
+        maxTicksLimit: 10
+      }
+    },
+    y: {
+      grid: { color: 'rgba(255, 255, 255, 0.03)' },
+      ticks: { 
+        color: '#94A3B8', 
+        font: { size: 8, family: 'JetBrains Mono' } 
+      }
+    }
+  }
+};
   // --- UI COMPONENTS ---
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4">
@@ -194,11 +263,11 @@ export const Analytics: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Start Date</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
+                    <input type="date" value={startDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setStartDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">End Date</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
+                    <input type="date" value={endDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setEndDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
                   </div>
                 </div>
                 <div className="space-y-3">
