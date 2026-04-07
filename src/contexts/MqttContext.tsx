@@ -165,6 +165,7 @@ if (telemetryMatch) {
   const topicId = telemetryMatch[1];
   // SAFETY: Use the ID from the JSON if it exists, otherwise use the Topic ID
   const chipId = data.nodeId || topicId;
+  const furnace = furnaces[chipId];
   
   // 1. UNLOCK NTP ICON
   // We check data.epoch > 0 to ensure the ESP32 actually has a real time sync
@@ -174,6 +175,7 @@ if (telemetryMatch) {
 
   setFurnaces(prev => {
     const f = prev[chipId];
+    
     
     // IF THE CARD DOESN'T EXIST YET, DON'T DISCARD THE DATA
     // This allows the dashboard to "auto-create" cards if discovery was missed
@@ -204,14 +206,15 @@ if (telemetryMatch) {
       }
     };
   });
-  const newPoint = {
-      timestamp: data.epoch ? data.epoch * 1000 : Date.now(),
-      temps: [
-        data.temps?.T1 ?? null,
-        data.temps?.T2 ?? null,
-        data.temps?.T3 ?? null,
-        data.temps?.T4 ?? null
-      ]
+const newPoint = {
+  timestamp: data.epoch ? data.epoch * 1000 : Date.now(),
+  temps: [
+    (data.temps?.T1 > -50 && data.temps?.T1 < 1200 && furnace?.enabledSensors[0]) ? data.temps.T1 : null,
+    (data.temps?.T2 > -50 && data.temps?.T2 < 1200 && furnace?.enabledSensors[1]) ? data.temps.T2 : null,
+    (data.temps?.T3 > -50 && data.temps?.T3 < 1200 && furnace?.enabledSensors[2]) ? data.temps.T3 : null,
+    (data.temps?.T4 > -50 && data.temps?.T4 < 1200 && furnace?.enabledSensors[3]) ? data.temps.T4 : null
+  ]
+
     };
     if (!historyBuffer.current[chipId]) {
       historyBuffer.current[chipId] = [];

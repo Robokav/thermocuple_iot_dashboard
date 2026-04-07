@@ -54,7 +54,10 @@ export const Analytics: React.FC = () => {
     if (!activeFurnace || !telemetryHistory[activeFurnace.chipId]) return [];
     return telemetryHistory[activeFurnace.chipId];
   }, [activeFurnace, telemetryHistory]);
-
+  
+  const latestData = liveHistory[liveHistory.length - 1];
+  const currentTemp = latestData?.temps[selectedSensor];
+  const isOffline = currentTemp === null || currentTemp === undefined || (typeof currentTemp === 'number' && currentTemp < -100);
   const liveLabels = useMemo(() => {
     if (liveHistory.length === 0) return [];
     const startTime = liveHistory[0].timestamp;
@@ -188,6 +191,7 @@ const handleExportCSV = () => {
 const chartOptions: ChartOptions<'line'> = {
   responsive: true,
   maintainAspectRatio: false,
+  spanGaps: false, // Set to false to show a "Break" in the line when offlin
   animation: {
     duration: 0 // Crucial for smooth real-time MQTT sliding
   },
@@ -208,6 +212,8 @@ const chartOptions: ChartOptions<'line'> = {
       }
     },
     y: {
+      beginAtZero: false, // Keeps the graph zoomed in on real temperatures
+      suggestedMin: 20,
       grid: { color: 'rgba(255, 255, 255, 0.03)' },
       ticks: { 
         color: '#94A3B8', 
@@ -249,7 +255,24 @@ const chartOptions: ChartOptions<'line'> = {
                 </div>
                 <div className="text-right">
                   <div className="font-mono text-5xl font-black text-white tracking-tighter">
-                    {liveHistory.length > 0 ? liveHistory[liveHistory.length - 1].temps[selectedSensor]?.toFixed(2) : '00.00'}<span className="text-xl text-cyan-500/40 ml-1">°C</span>
+                  
+   
+    {liveHistory.length > 0 ? (
+    isOffline ? (
+      <span className="text-red-500/50 uppercase text-4xl">Offline</span>
+    ) : (
+      currentTemp?.toFixed(2)
+    )
+  ) : (
+    '00.00'
+  )}
+
+  {/* Only show °C if not offline and data exists */}
+  {liveHistory.length > 0 && !isOffline && (
+    <span className="text-2xl text-cyan-400/30 ml-2">°C</span>
+  )}
+
+ 
                   </div>
                 </div>
               </div>
