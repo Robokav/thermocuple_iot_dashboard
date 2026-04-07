@@ -209,10 +209,11 @@ if (telemetryMatch) {
 const newPoint = {
   timestamp: data.epoch ? data.epoch * 1000 : Date.now(),
 temps: [
-    data.temps?.T1 ?? null,
-    data.temps?.T2 ?? null,
-    data.temps?.T3 ?? null,
-    data.temps?.T4 ?? null
+    // Logic: If value is -888, -999, or missing -> set to null. Otherwise, use value.
+    (data.temps?.T1 === -888 || data.temps?.T1 === -999 || !data.temps?.T1) ? null : data.temps.T1,
+    (data.temps?.T2 === -888 || data.temps?.T2 === -999 || !data.temps?.T2) ? null : data.temps.T2,
+    (data.temps?.T3 === -888 || data.temps?.T3 === -999 || !data.temps?.T3) ? null : data.temps.T3,
+    (data.temps?.T4 === -888 || data.temps?.T4 === -999 || !data.temps?.T4) ? null : data.temps.T4
   ]
 
     };
