@@ -97,17 +97,35 @@ export const Analytics: React.FC = () => {
   }, [liveHistory, liveLabels, isOverlayActive, selectedSensor, csvOverlay, sensorNames]);
 
   // --- ACTIONS ---
-  const handleRunQuery = async () => {
-    setIsLoading(true);
-    try {
-      const data = await queryHistoricalData(startDate, endDate, selectedFields);
-      setQueryResults(data as any[]);
-    } catch (err) {
-      alert("Database error. Check InfluxDB connectivity.");
-    } finally {
-      setIsLoading(false);
+const handleRunQuery = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault(); // Prevents the page from refreshing
+  
+  if (selectedFields.length === 0) {
+    alert("Please select at least one sensor.");
+    return;
+  }
+
+  setIsLoading(true);
+  console.log("Querying InfluxDB...", { startDate, endDate, selectedFields });
+
+  try {
+    // We pass the dates and fields to our library
+    const data = await queryHistoricalData(startDate, endDate, selectedFields);
+    
+    if (!data || data.length === 0) {
+      console.warn("No data found for the selected range.");
+      alert("No data found for this period.");
+    } else {
+      console.log(`Success! Fetched ${data.length} rows.`);
+      setQueryResults(data);
     }
-  };
+  } catch (err) {
+    console.error("Database Query Error:", err);
+    alert("Query failed. Check your InfluxDB connection and Token.");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handlePurge = async () => {
     if (window.confirm(`Permanently delete data from ${startDate} to ${endDate}?`)) {
@@ -286,9 +304,20 @@ const chartOptions: ChartOptions<'line'> = {
                 </div>
               </div>
               <div className="bg-indigo-500/5 border border-indigo-500/10 p-6 rounded-2xl flex flex-col justify-center space-y-4">
-                <button onClick={handleRunQuery} disabled={isLoading} className="w-full bg-indigo-500 hover:bg-indigo-400 py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-lg shadow-indigo-500/20">
-                  {isLoading ? <RefreshCw className="animate-spin mx-auto w-4 h-4" /> : 'Execute Flux Query'}
-                </button>
+                <button 
+  onClick={handleRunQuery} 
+  disabled={isLoading}
+  className="w-full bg-[#6366f1] hover:bg-[#5558e6] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {isLoading ? (
+    <div className="flex items-center justify-center gap-2">
+      <RefreshCw className="animate-spin w-4 h-4" /> 
+      <span>FETCHING DATA...</span>
+    </div>
+  ) : (
+    'Execute Flux Query'
+  )}
+</button>
                 <div className="flex gap-2">
                   <button onClick={handleExportCSV} className="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-[9px] font-bold text-white/60 uppercase tracking-widest transition-all border border-white/5"><Download className="w-3 h-3 inline mr-1" /> Export CSV</button>
                   <button onClick={handlePurge} className="flex-1 bg-red-500/10 hover:bg-red-500/20 py-3 rounded-xl text-[9px] font-bold text-red-500 uppercase tracking-widest transition-all border border-red-500/10"><Trash2 className="w-3 h-3 inline mr-1" /> Purge</button>
