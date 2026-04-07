@@ -57,13 +57,11 @@ export const Analytics: React.FC = () => {
   
   const latestData = liveHistory[liveHistory.length - 1];
   const currentTemp = latestData?.temps[selectedSensor];
-  const isDisconnected = currentTemp === -999;
-  const isOffline = currentTemp === -888 || currentTemp === null || currentTemp === undefined || currentTemp < -100;
-  const displayValue = isDisconnected 
-  ? "DISCONNECTED" 
-  : isOffline 
-    ? "OFFLINE" 
-    : currentTemp?.toFixed(2);
+  const isDisconnected = currentTemp === -888;
+const isOffline = currentTemp === -999 || currentTemp === null || currentTemp === undefined;
+
+// This chooses the text to show inside the <span>
+const displayValue = isDisconnected ? "Disconnected" : isOffline ? "Offline" : currentTemp?.toFixed(2);
   const liveLabels = useMemo(() => {
     if (liveHistory.length === 0) return [];
     const startTime = liveHistory[0].timestamp;
@@ -260,20 +258,22 @@ const chartOptions: ChartOptions<'line'> = {
                   </p>
                 </div>
                 <div className="text-right">
-                 <div className="text-7xl font-black tracking-tighter flex items-baseline">
+<div className="text-7xl font-black tracking-tighter flex items-baseline">
   {liveHistory.length > 0 ? (
+    /* This span changes color and size if the sensor is Offline or Disconnected */
     <span className={`uppercase ${isDisconnected || isOffline ? 'text-red-500/40 text-4xl italic' : 'text-white'}`}>
       {displayValue}
     </span>
   ) : (
+    /* Shown if no MQTT data has arrived at all yet */
     <span className="text-white/20 uppercase text-4xl italic">No Stream</span>
   )}
 
-  {/* Only show the °C unit if the sensor is actually working */}
+  {/* Only show the °C unit if the sensor is actually sending a real number */}
   {!isDisconnected && !isOffline && liveHistory.length > 0 && (
     <span className="text-2xl text-cyan-400/30 ml-2">°C</span>
   )}
-</div> 
+</div>
                 </div>
               </div>
 
