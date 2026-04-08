@@ -1,44 +1,40 @@
 import { InfluxDB } from '@influxdata/influxdb-client';
 
-// 1. Safe Environment Variable Loading
 const url = import.meta.env.VITE_INFLUX_URL || '';
 const token = import.meta.env.VITE_INFLUX_TOKEN || '';
 const org = import.meta.env.VITE_INFLUX_ORG || '';
 const bucket = import.meta.env.VITE_INFLUX_BUCKET || 'furnace_data';
 
-// 2. Initialize client
 const influxClient = url ? new InfluxDB({ url, token }) : null;
 
-/**
- * QUERY HISTORY: Fetches data between two dates for specific sensors
- * This is what powers your Analytics Graph and Table
- */
 export const queryHistoricalData = async (startDate: string, endDate: string, fields: string[]): Promise<any[]> => {
   if (!influxClient || !org) {
-    console.error("InfluxDB not initialized");
+    console.error("InfluxDB not initialized. Check your .env file.");
     return [];
   }
 
   const queryApi = influxClient.getQueryApi(org);
 
-  // Construct the Flux query
-  // We use pivot() so that T1, T2, etc., appear as columns in one row per timestamp
-// Ensure the fields sent to the query match the lowercase names in your Excel sheet
-const fieldsToQuery = ['t1', 't2', 't3', 't4']; 
+  // 1. FIX: Match the lowercase fields from your Excel sheet
+  const fieldsToQuery = fields.length > 0 ? fields : ['t1', 't2', 't3', 't4']; 
+  const fieldFilter = `|> filter(fn: (r) => ${fieldsToQuery.map(f => `r["_field"] == "${f.toLowerCase()}"`).join(' or ')})`;
 
-const fieldFilter = `|> filter(fn: (r) => ${fieldsToQuery.map(f => `r["_field"] == "${f}"`).join(' or ')})`;
+  // 2. FIX: Measurement Name. 
+  // Based on your previous code, it should likely be "furnace_telemetry"
+  const measurement = "furnace_telemetry"; 
 
-const fluxQuery = `
-  from(bucket: "${bucket}")
-    |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
-    |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
-    ${fieldFilter}
-    |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
-    |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-`;
+  const fluxQuery = `
+    from(bucket: "${bucket}")
+      |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
+      |> filter(fn: (r) => r["_measurement"] == "${measurement}")
+      ${fieldFilter}
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> limit(n: 100)
+  `;
+
+  console.log("Executing Flux:", fluxQuery);
 
   const results: any[] = [];
-
   return new Promise((resolve) => {
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
@@ -49,19 +45,12 @@ const fluxQuery = `
         resolve([]);
       },
       complete() {
+        console.log(`Query Complete. Found ${results.length} rows.`);
         resolve(results);
       },
     });
   });
 };
-
-export const getHistory = async (chipId: string, limit: number = 50) => {
-  // Replace with your actual API endpoint that queries Influx
-  const response = await fetch(`/api/history?chipId=${chipId}&limit=${limit}`);
-  if (!response.ok) throw new Error('Failed to fetch history');
-  return response.json();
-};
-
 /**
  * PURGE: Deletes data within a specific time range
  */
