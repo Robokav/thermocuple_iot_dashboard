@@ -26,9 +26,10 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
   // Instead of adding "T00:00:00Z" manually, let's ensure we use a clean date
 const fluxQuery = `
   from(bucket: "${bucket}")
-    |> range(start: time(v: "${new Date(startDate).toISOString()}"), stop: time(v: "${new Date(endDate).toISOString()}"))
+    |> range(start: time(v: "${startDate}T00:00:00Z"), stop: time(v: "${endDate}T23:59:59Z"))
     |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
-    ${fieldFilter}
+    // Use the exact lowercase names from your Excel file
+    |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
     |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
     |> limit(n: 100)
 `;
