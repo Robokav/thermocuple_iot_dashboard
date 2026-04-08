@@ -14,6 +14,7 @@ import Papa from 'papaparse';
 import { useMqtt } from '../contexts/MqttContext';
 import { FurnaceData } from '../types';
 import { queryHistoricalData, purgeHistoricalData } from '../lib/influx';
+import { HistoryChart } from './HistoryChart';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -48,6 +49,8 @@ export const Analytics: React.FC = () => {
   useEffect(() => {
     if (selectedFields.length === 0) setSelectedFields([sensorNames[0]]);
   }, [sensorNames]);
+
+  const [isExplorerMode, setIsExplorerMode] = useState(false);
 
   // --- LOGIC: RELATIVE TIME (0s Start) ---
   const liveHistory = useMemo(() => {
@@ -232,16 +235,34 @@ const chartOptions: ChartOptions<'line'> = {
     <div className="space-y-6 max-w-7xl mx-auto p-4">
       {/* VIEW TOGGLE */}
       <nav className="flex bg-[#0f172a] p-1 rounded-xl border border-white/5 max-w-[320px] mx-auto shadow-2xl">
-        <button onClick={() => setView('live')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-[0.2em] rounded-lg transition-all ${view === 'live' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-lg' : 'text-white/20'}`}>Live Telemetry</button>
-        <button onClick={() => setView('historical')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-[0.2em] rounded-lg transition-all ${view === 'historical' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'text-white/20'}`}>Data Explorer</button>
+        <button
+          onClick={() => setIsExplorerMode(false)}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            !isExplorerMode 
+              ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/20' 
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          LIVE
+        </button>
+        <button
+          onClick={() => setIsExplorerMode(true)}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+            isExplorerMode 
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' 
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+         Data EXPLORER
+        </button>
       </nav>
+      
 
-      <AnimatePresence mode="wait">
-        {view === 'live' ? (
+     <AnimatePresence mode="wait">
+        {!isExplorerMode ? (
+          /* --- LIVE VIEW --- */
           <motion.div key="live" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-            
-            {/* LIVE KINETICS CARD */}
-            <section className="bg-[#0f172a] rounded-2xl p-8 border border-white/5 relative overflow-hidden shadow-2xl">
+            <section className="bg-[#0f172a] rounded-2xl p-8 border border-white/5 relative overflow-hidden shadow-2xl min-h[650px] flex flex-col">
               <div className="flex flex-wrap gap-2 mb-10">
                 {sensorNames.map((name, i) => (
                   <button key={i} onClick={() => setSelectedSensor(i)} className={`px-4 py-1.5 text-[9px] font-bold rounded-full border transition-all ${selectedSensor === i ? 'bg-cyan-500 text-[#0f172a] border-cyan-400' : 'bg-white/5 text-white/40 border-white/5 hover:border-white/20'}`}>{name}</button>
@@ -254,49 +275,25 @@ const chartOptions: ChartOptions<'line'> = {
               <div className="flex justify-between items-end mb-12">
                 <div>
                   <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Thermal Kinetics</h2>
-                  <p className="text-[10px] font-mono text-cyan-500/40 mt-2 uppercase tracking-[0.3em] flex items-center gap-2">
-                    <Activity className="w-3 h-3" /> REAL-TIME MQTT STREAM // v4.1.0
-                  </p>
+                  <p className="text-[10px] font-mono text-cyan-500/40 mt-2 uppercase tracking-[0.3em] flex items-center gap-2"><Activity className="w-3 h-3" /> REAL-TIME MQTT STREAM</p>
                 </div>
                 <div className="text-right">
-<div className="text-7xl font-black tracking-tighter flex items-baseline">
-  {liveHistory.length > 0 ? (
-    <span className={`uppercase ${!hasValidData ? 'text-red-500/40 text-4xl italic' : 'text-white'}`}>
-      {displayValue}
-    </span>
-  ) : (
-    <span className="text-white/20 uppercase text-4xl italic">No Stream</span>
-  )}
-
-  {/* CHANGE THIS PART: Only show °C if data is actually valid */}
-  {hasValidData && (
-    <span className="text-2xl text-cyan-400/30 ml-2">°C</span>
-  )}
-</div>
+                  <div className="text-7xl font-black tracking-tighter flex items-baseline">
+                    <span className={`uppercase ${!hasValidData ? 'text-red-500/40 text-4xl italic' : 'text-white'}`}>{displayValue}</span>
+                    {hasValidData && <span className="text-2xl text-cyan-400/30 ml-2">°C</span>}
+                  </div>
                 </div>
               </div>
 
-              <div className="h-80 w-full">
-                <Line 
-                  ref={chartRef} 
-                  data={liveChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                      x: { grid: { display: false }, ticks: { color: '#ffffff10', font: { size: 8 } } },
-                      y: { grid: { color: '#ffffff05' }, ticks: { color: '#ffffff10', font: { size: 8 } } }
-                    },
-                    plugins: { legend: { display: false } }
-                  }} 
-                />
+              <div className="flex-1 min-h-[400px] w-full mt-4">
+                <Line data={liveChartData} options={{ responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#ffffff10', font: { size: 8 } } }, y: { grid: { color: '#ffffff05' }, ticks: { color: '#ffffff10', font: { size: 8 } } } } }} />
               </div>
             </section>
           </motion.div>
         ) : (
+          /* --- HISTORICAL VIEW --- */
           <motion.div key="historical" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            
-            {/* QUERY BUILDER */}
+            {/* QUERY BUILDER SECTION */}
             <section className="bg-[#0f172a] rounded-2xl p-8 border border-white/5 shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <h3 className="flex items-center gap-3 font-bold text-white uppercase tracking-widest text-sm"><Database className="text-indigo-400" /> Query Builder</h3>
@@ -314,37 +311,35 @@ const chartOptions: ChartOptions<'line'> = {
                   <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest block">Select Sensors</label>
                   <div className="flex flex-wrap gap-2">
                     {sensorNames.map(name => (
-                      <button 
-                        key={name}
-                        onClick={() => setSelectedFields(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name])}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-bold border transition-all ${selectedFields.includes(name) ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40' : 'bg-white/5 text-white/20 border-white/5'}`}
-                      >
-                        {name}
-                      </button>
+                      <button key={name} onClick={() => setSelectedFields(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name])} className={`px-4 py-2 rounded-lg text-[10px] font-bold border transition-all ${selectedFields.includes(name) ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40' : 'bg-white/5 text-white/20 border-white/5'}`}>{name}</button>
                     ))}
                   </div>
                 </div>
               </div>
               <div className="bg-indigo-500/5 border border-indigo-500/10 p-6 rounded-2xl flex flex-col justify-center space-y-4">
-                <button 
-  onClick={handleRunQuery} 
-  disabled={isLoading}
-  className="w-full bg-[#6366f1] hover:bg-[#5558e6] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {isLoading ? (
-    <div className="flex items-center justify-center gap-2">
-      <RefreshCw className="animate-spin w-4 h-4" /> 
-      <span>FETCHING DATA...</span>
-    </div>
-  ) : (
-    'Execute Flux Query'
-  )}
-</button>
+                <button onClick={handleRunQuery} disabled={isLoading} className="w-full bg-[#6366f1] hover:bg-[#5558e6] py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50">
+                  {isLoading ? <div className="flex items-center justify-center gap-2"><RefreshCw className="animate-spin w-4 h-4" /><span>FETCHING...</span></div> : 'Execute Flux Query'}
+                </button>
                 <div className="flex gap-2">
-                  <button onClick={handleExportCSV} className="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-[9px] font-bold text-white/60 uppercase tracking-widest transition-all border border-white/5"><Download className="w-3 h-3 inline mr-1" /> Export CSV</button>
-                  <button onClick={handlePurge} className="flex-1 bg-red-500/10 hover:bg-red-500/20 py-3 rounded-xl text-[9px] font-bold text-red-500 uppercase tracking-widest transition-all border border-red-500/10"><Trash2 className="w-3 h-3 inline mr-1" /> Purge</button>
+                  <button onClick={handleExportCSV} className="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-[9px] font-bold text-white/60 uppercase border border-white/5"><Download className="w-3 h-3 inline mr-1" /> Export CSV</button>
+                  <button onClick={handlePurge} className="flex-1 bg-red-500/10 hover:bg-red-500/20 py-3 rounded-xl text-[9px] font-bold text-red-500 uppercase border border-red-500/10"><Trash2 className="w-3 h-3 inline mr-1" /> Purge</button>
                 </div>
               </div>
+            </section>
+
+            {/* HISTORICAL TREND CHART */}
+            <section className="bg-[#0f172a] rounded-2xl p-8 border border-white/5 shadow-2xl min-h-[400px]">
+              <h3 className="flex items-center gap-3 font-bold text-white uppercase tracking-widest text-sm mb-6"><TrendingUp className="text-cyan-400 w-4 h-4" /> Historical Trend</h3>
+              {queryResults.length > 0 ? (
+                <div className="h-[350px]">
+                  <HistoryChart data={queryResults} />
+                </div>
+              ) : (
+                <div className="h-[300px] flex flex-col items-center justify-center text-slate-500 italic opacity-20 border-2 border-dashed border-white/5 rounded-xl">
+                  <Database className="w-12 h-12 mb-2" />
+                  <p>Execute a Flux Query to visualize historical data</p>
+                </div>
+              )}
             </section>
 
             {/* RESULTS TABLE */}
