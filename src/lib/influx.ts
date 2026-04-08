@@ -26,7 +26,7 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
   const fluxQuery = `
     from(bucket: "${bucket}")
       |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
-      |> filter(fn: (r) => r["_measurement"] == "${measurement}")
+      |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
       ${fieldFilter}
       |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
       |> limit(n: 100)
