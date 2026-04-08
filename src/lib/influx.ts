@@ -3,7 +3,7 @@ import { InfluxDB } from '@influxdata/influxdb-client';
 const url = import.meta.env.VITE_INFLUX_URL || '';
 const token = import.meta.env.VITE_INFLUX_TOKEN || '';
 const org = import.meta.env.VITE_INFLUX_ORG || '';
-const bucket = import.meta.env.VITE_INFLUX_BUCKET || 'furnace_data';
+const bucket = import.meta.env.VITE_INFLUX_BUCKET;
 
 const influxClient = url ? new InfluxDB({ url, token }) : null;
 
@@ -21,16 +21,17 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
 
   // 2. FIX: Measurement Name. 
   // Based on your previous code, it should likely be "furnace_telemetry"
-  const measurement = "furnace_telemetry"; 
+
 
   const fluxQuery = `
-    from(bucket: "${bucket}")
-      |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
-      |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
-      ${fieldFilter}
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-      |> limit(n: 100)
-  `;
+  from(bucket: "${bucket}")
+    |> range(start: time(v: "${startDate}T00:00:00Z"), stop: time(v: "${endDate}T23:59:59Z"))
+    |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
+    ${fieldFilter}
+    |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+    |> limit(n: 100)
+`;
+  
 
   console.log("Executing Flux:", fluxQuery);
 
