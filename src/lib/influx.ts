@@ -23,9 +23,10 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
   // Based on your previous code, it should likely be "furnace_telemetry"
 
 
-  const fluxQuery = `
+  // Instead of adding "T00:00:00Z" manually, let's ensure we use a clean date
+const fluxQuery = `
   from(bucket: "${bucket}")
-    |> range(start: time(v: "${startDate}T00:00:00Z"), stop: time(v: "${endDate}T23:59:59Z"))
+    |> range(start: time(v: "${new Date(startDate).toISOString()}"), stop: time(v: "${new Date(endDate).toISOString()}"))
     |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
     ${fieldFilter}
     |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
@@ -86,10 +87,13 @@ export const fetchLatestFurnaceData = async (): Promise<any[]> => {
   if (!influxClient || !org) return [];
 
   const queryApi = influxClient.getQueryApi(org);
+  
+  // Use the same measurement name and lowercase fields we found in your Excel
   const fluxQuery = `
     from(bucket: "${bucket}")
-      |> range(start: -3d)
+      |> range(start: -24h) 
       |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
+      |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
       |> last()
       |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
   `;
@@ -99,9 +103,16 @@ export const fetchLatestFurnaceData = async (): Promise<any[]> => {
     queryApi.queryRows(fluxQuery, {
       next(row, tableMeta) {
         const obj = tableMeta.toObject(row);
-        results.push({ ...obj, chipId: obj.furnace_id || obj.chipId || 'unknown' });
+        // Ensure we map furnace_id or chipId correctly for your UI
+        results.push({ 
+          ...obj, 
+          chipId: obj.furnace_id || obj.chipId || 'furnace_01' 
+        });
       },
-      error: () => resolve([]),
+      error: (err) => {
+        console.error("Fetch Latest Error:", err);
+        resolve([]);
+      },
       complete: () => resolve(results),
     });
   });
