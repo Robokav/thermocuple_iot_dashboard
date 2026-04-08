@@ -21,12 +21,12 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ data }) => {
   const chartData = useMemo(() => {
     return data.map(row => ({
       // Convert Influx _time string to a Javascript timestamp
-      timestamp: new Date(row._time).getTime(),
+      timestamp: new Date(row._time|| row.time).getTime(),
       // Match the keys exactly as they appear in your Influx rows
-      t1: row.T1_CORE,
-      t2: row.T2_UPPER,
-      t3: row.T3_LOWER,
-      t4: row.T4_EXHAUST
+      t1: row.t1,
+      t2: row.t2,
+      t3: row.t3,
+      t4: row.t4
     }));
   }, [data]);
 

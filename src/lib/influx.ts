@@ -23,14 +23,19 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
 
   // Construct the Flux query
   // We use pivot() so that T1, T2, etc., appear as columns in one row per timestamp
-  const fluxQuery = `
-    from(bucket: "${bucket}")
-      |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
-      |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
-      ${fields.map(f => `|> filter(fn: (r) => r["_field"] == "${f}")`).join(' ')}
-      |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
-      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-  `;
+// Ensure the fields sent to the query match the lowercase names in your Excel sheet
+const fieldsToQuery = ['t1', 't2', 't3', 't4']; 
+
+const fieldFilter = `|> filter(fn: (r) => ${fieldsToQuery.map(f => `r["_field"] == "${f}"`).join(' or ')})`;
+
+const fluxQuery = `
+  from(bucket: "${bucket}")
+    |> range(start: ${startDate}T00:00:00Z, stop: ${endDate}T23:59:59Z)
+    |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
+    ${fieldFilter}
+    |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+    |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+`;
 
   const results: any[] = [];
 
@@ -48,6 +53,13 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
       },
     });
   });
+};
+
+export const getHistory = async (chipId: string, limit: number = 50) => {
+  // Replace with your actual API endpoint that queries Influx
+  const response = await fetch(`/api/history?chipId=${chipId}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch history');
+  return response.json();
 };
 
 /**

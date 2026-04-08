@@ -118,10 +118,13 @@ const handleRunQuery = async (e?: React.FormEvent) => {
 
   setIsLoading(true);
   console.log("Querying InfluxDB...", { startDate, endDate, selectedFields });
+  // Convert "2026-04-01" to "2026-04-01T00:00:00Z"
+  const startISO = new Date(startDate).toISOString();
+  const endISO = new Date(endDate).toISOString();
 
   try {
     // We pass the dates and fields to our library
-    const data = await queryHistoricalData(startDate, endDate, selectedFields);
+    const data = await queryHistoricalData(startISO, endISO, selectedFields);
     
     if (!data || data.length === 0) {
       console.warn("No data found for the selected range.");
