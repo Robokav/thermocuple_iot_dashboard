@@ -58,29 +58,37 @@ const fluxQuery = `
  * PURGE: Deletes data within a specific time range
  */
 export const purgeHistoricalData = async (startDate: string, endDate: string) => {
-  if (!influxClient || !org) {
-    console.error("Purge failed: InfluxDB client not initialized.");
-    return { success: false };
-  }
+  // 1. Setup the endpoint URL
+  const url = `https://${process.env.NEXT_PUBLIC_INFLUX_HOST}/api/v2/delete?org=${process.env.NEXT_PUBLIC_INFLUX_ORG}&bucket=${process.env.NEXT_PUBLIC_INFLUX_BUCKET}`;
 
-  const deleteApi = influxClient.getDeleteApi(org);
-
-  // USE THE RAW DATES: This respects the specific hours you picked in the UI
-  const start = new Date(startDate).toISOString();
-  const stop = new Date(endDate).toISOString();
+  // 2. Format dates correctly for InfluxDB
+  const startISO = new Date(startDate).toISOString();
+  const stopISO = new Date(endDate).toISOString();
 
   try {
-    await deleteApi.delete({
-      start: start,
-      stop: stop,
-      bucket: bucket,
-      predicate: '_measurement="furnace_telemetry"',
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${process.env.NEXT_PUBLIC_INFLUX_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        start: startISO,
+        stop: stopISO,
+        // The predicate tells Influx exactly WHAT to delete
+        predicate: '_measurement="furnace_telemetry"'
+      }),
     });
-    
-    console.log(`Purge Successful for range: ${start} to ${stop}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`InfluxDB Delete Error: ${errorText}`);
+    }
+
+    console.log("Purge Success:", startISO, "to", stopISO);
     return { success: true };
   } catch (error) {
-    console.error("Purge Failed:", error);
+    console.error("Purge Request Failed:", error);
     return { success: false, error };
   }
 };
