@@ -63,24 +63,27 @@ export const purgeHistoricalData = async (startDate: string, endDate: string) =>
     return { success: false };
   }
 
-  const deleteApi = influxClient!.getDeleteApi(org);
-  const start = new Date(`${startDate}T00:00:00Z`);
-  const stop = new Date(`${endDate}T23:59:59Z`);
+  const deleteApi = influxClient.getDeleteApi(org);
+
+  // USE THE RAW DATES: This respects the specific hours you picked in the UI
+  const start = new Date(startDate).toISOString();
+  const stop = new Date(endDate).toISOString();
 
   try {
     await deleteApi.delete({
-      start: start.toISOString(),
-      stop: stop.toISOString(),
+      start: start,
+      stop: stop,
       bucket: bucket,
       predicate: '_measurement="furnace_telemetry"',
     });
+    
+    console.log(`Purge Successful for range: ${start} to ${stop}`);
     return { success: true };
   } catch (error) {
     console.error("Purge Failed:", error);
-    throw error;
+    return { success: false, error };
   }
 };
-
 /**
  * FETCH LATEST: Gets the last known state for each sensor
  */

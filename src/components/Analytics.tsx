@@ -141,15 +141,18 @@ const handleRunQuery = async (e?: React.FormEvent) => {
   }
 };
 
-  const handlePurge = async () => {
-    if (window.confirm(`Permanently delete data from ${startDate} to ${endDate}?`)) {
-      setIsLoading(true);
-      await purgeHistoricalData(startDate, endDate);
-      setQueryResults([]);
-      setIsLoading(false);
-      alert("Purge Complete.");
-    }
-  };
+const handlePurge = async () => {
+  const confirmed = window.confirm("Are you sure? This will permanently delete the data for the selected range.");
+  if (!confirmed) return;
+
+  const result = await purgeHistoricalData(startDate, endDate);
+  if (result.success) {
+    alert("Data Purged Successfully!");
+    setQueryResults([]); // Clear the table/graph locally so the user sees it's gone
+  } else {
+    alert("Purge failed. Check console for details.");
+  }
+};
 
 const handleExportCSV = () => {
   if (queryResults.length === 0) {
@@ -157,36 +160,33 @@ const handleExportCSV = () => {
     return;
   }
 
-  // Get the very first timestamp to calculate the "0s" offset
   const firstTimestamp = new Date(queryResults[0]._time).getTime();
 
-  // 1. Format the data for Excel/Human readability
   const formattedData = queryResults.map(row => {
     const currentTime = new Date(row._time).getTime();
-    
-    // Calculate seconds from the start of this specific log
     const elapsedSeconds = Math.floor((currentTime - firstTimestamp) / 1000);
 
-    // Create a clean object for the CSV row
-    return {
-      // Human Readable Date/Time
+    // Start with the standard columns
+    const rowData: any = {
       "Date_Time": new Date(row._time).toLocaleString('en-GB', {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit',
         hour12: false
       }).replace(',', ''),
-      
-      // The "0s Start" column you requested
       "Elapsed_Seconds": elapsedSeconds,
-      
-      // Dynamic Sensor Data (T1, T2, etc.)
-      ...Object.keys(row)
-        .filter(key => !['_time', '_start', '_stop', '_measurement', '_field', 'result', 'table'].includes(key))
-        .reduce((obj, key) => ({ ...obj, [key]: row[key] }), {})
     };
+
+    // 2. DYNAMIC FILTER: Only add columns that are SELECTED in the UI
+    selectedFields.forEach(field => {
+      // Maps 'T1CORE' -> 't1' to match your InfluxDB keys
+      const dataKey = field.toLowerCase().split('_')[0]; 
+      // Add to the CSV row object
+      rowData[field] = row[dataKey] !== undefined ? row[dataKey] : 0;
+    });
+
+    return rowData;
   });
 
-  // 2. Generate and Download
   const csv = Papa.unparse(formattedData);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
