@@ -350,25 +350,24 @@ const chartOptions: ChartOptions<'line'> = {
               <section className="bg-[#0f172a] rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-white/5 text-[9px] font-bold text-white/40 uppercase tracking-widest">
-                        <th className="p-4 font-mono">Timestamp</th>
-                        {selectedFields.map(f => <th key={f} className="p-4 font-mono">{f} (°C)</th>)}
-                      </tr>
-                    </thead>
+<thead className="text-[10px] uppercase tracking-wider text-white/40 border-b border-white/10">
+  <tr>
+    <th className="p-4 text-left">Time</th>
+    {/* Only create headers for selected fields */}
+    {selectedFields.map(field => (
+      <th key={field} className="p-4 text-left">{field}</th>
+    ))}
+  </tr>
+</thead>
                     <tbody className="text-[11px] font-mono text-white/60">
   {queryResults.slice(0, 50).map((row, i) => (
     <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
       <td className="p-4">{new Date(row._time).toLocaleString()}</td>
       
-      {selectedFields.map(f => {
-        // 1. Convert the field name to lowercase (e.g., 'T1_CORE' -> 't1')
-        // We split by '_' to handle cases like 'T1_CORE' becoming just 't1'
-        const dataKey = f.toLowerCase().split('_')[0]; 
-        
+{selectedFields.map(field => {
+        const dataKey = field.toLowerCase().split('_')[0]; // Converts T1CORE to t1
         return (
-          <td key={f} className="p-4 text-cyan-400">
-            {/* 2. Use the lowercase key to find the value in the row */}
+          <td key={field} className="p-4 text-cyan-400">
             {row[dataKey] !== undefined ? row[dataKey].toFixed(2) : '--'}
           </td>
         );

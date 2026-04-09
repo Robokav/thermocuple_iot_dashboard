@@ -30,7 +30,7 @@ const fluxQuery = `
     |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
     |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
     |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-    |> limit(n: 100)
+    //|> limit(n: 100)
 `;
 
 
