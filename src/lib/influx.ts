@@ -16,8 +16,8 @@ export const queryHistoricalData = async (startDate: string, endDate: string, fi
   const queryApi = influxClient.getQueryApi(org);
 
   // 1. FIX: Match the lowercase fields from your Excel sheet
-  const cleanStart = new Date(startDate).toISOString().split('T')[0];
-const cleanEnd = new Date(endDate).toISOString().split('T')[0];
+const startISO = new Date(startDate).toISOString();
+  const endISO = new Date(endDate).toISOString();
 
   // 2. FIX: Measurement Name. 
   // Based on your previous code, it should likely be "furnace_telemetry"
@@ -25,8 +25,8 @@ const cleanEnd = new Date(endDate).toISOString().split('T')[0];
 
   // Instead of adding "T00:00:00Z" manually, let's ensure we use a clean date
 const fluxQuery = `
-  from(bucket: "${bucket}")
-    |> range(start: time(v: "${cleanStart}T00:00:00Z"), stop: time(v: "${cleanEnd}T23:59:59Z"))
+    from(bucket: "${bucket}")
+    |> range(start: time(v: "${startISO}"), stop: time(v: "${endISO}"))
     |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
     |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
     |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")

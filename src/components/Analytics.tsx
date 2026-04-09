@@ -307,7 +307,7 @@ const chartOptions: ChartOptions<'line'> = {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">End Date</label>
-                    <input type="date" value={endDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setEndDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
+                    <input type="datetime-local" value={endDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setEndDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
                   </div>
                 </div>
                 <div className="space-y-3">
