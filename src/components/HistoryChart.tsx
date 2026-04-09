@@ -22,11 +22,11 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({ data }) => {
     return data.map(row => ({
       // Convert Influx _time string to a Javascript timestamp
       timestamp: new Date(row._time|| row.time).getTime(),
-      // Match the keys exactly as they appear in your Influx rows
-      t1: row.t1,
-      t2: row.t2,
-      t3: row.t3,
-      t4: row.t4
+   // If t1 is 0, make it null so the line just skips it instead of diving to the bottom
+    t1: row.t1 === 0 ? null : row.t1,
+    t2: row.t2 === 0 ? null : row.t2,
+    t3: row.t3 === 0 ? null : row.t3,
+    t4: row.t4 === 0 ? null : row.t4
     }));
   }, [data]);
 

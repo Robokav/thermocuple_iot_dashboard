@@ -302,8 +302,8 @@ const chartOptions: ChartOptions<'line'> = {
                 <h3 className="flex items-center gap-3 font-bold text-white uppercase tracking-widest text-sm"><Database className="text-indigo-400" /> Query Builder</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Start Date</label>
-                    <input type="date" value={startDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setStartDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
+                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Start Time</label>
+                    <input type="datetime-local" value={startDate} onClick={(e) => (e.target as any).showPicker()} onChange={e => setStartDate(e.target.value)} className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-indigo-500" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">End Date</label>
@@ -357,13 +357,25 @@ const chartOptions: ChartOptions<'line'> = {
                       </tr>
                     </thead>
                     <tbody className="text-[11px] font-mono text-white/60">
-                      {queryResults.slice(0, 50).map((row, i) => (
-                        <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="p-4">{new Date(row._time).toLocaleString()}</td>
-                          {selectedFields.map(f => <td key={f} className="p-4 text-cyan-400">{row[f]?.toFixed(2) || '--'}</td>)}
-                        </tr>
-                      ))}
-                    </tbody>
+  {queryResults.slice(0, 50).map((row, i) => (
+    <tr key={i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+      <td className="p-4">{new Date(row._time).toLocaleString()}</td>
+      
+      {selectedFields.map(f => {
+        // 1. Convert the field name to lowercase (e.g., 'T1_CORE' -> 't1')
+        // We split by '_' to handle cases like 'T1_CORE' becoming just 't1'
+        const dataKey = f.toLowerCase().split('_')[0]; 
+        
+        return (
+          <td key={f} className="p-4 text-cyan-400">
+            {/* 2. Use the lowercase key to find the value in the row */}
+            {row[dataKey] !== undefined ? row[dataKey].toFixed(2) : '--'}
+          </td>
+        );
+      })}
+    </tr>
+  ))}
+</tbody>
                   </table>
                 </div>
               </section>
