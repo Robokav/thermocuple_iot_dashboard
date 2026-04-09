@@ -58,38 +58,38 @@ const fluxQuery = `
  * PURGE: Deletes data within a specific time range
  */
 export const purgeHistoricalData = async (startDate: string, endDate: string) => {
-  // 1. Setup the endpoint URL
-  const url = `https://${process.env.NEXT_PUBLIC_INFLUX_HOST}/api/v2/delete?org=${process.env.NEXT_PUBLIC_INFLUX_ORG}&bucket=${process.env.NEXT_PUBLIC_INFLUX_BUCKET}`;
+  // Use the constants defined at the top of your file (shown in your screenshot)
+  const purgeUrl = `${url}/api/v2/delete?org=${org}&bucket=${bucket}`;
 
-  // 2. Format dates correctly for InfluxDB
+  // Ensure dates are ISO format for the API
   const startISO = new Date(startDate).toISOString();
   const stopISO = new Date(endDate).toISOString();
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(purgeUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${process.env.NEXT_PUBLIC_INFLUX_TOKEN}`,
+        'Authorization': `Token ${token}`, // Uses your VITE_INFLUX_TOKEN constant
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         start: startISO,
         stop: stopISO,
-        // The predicate tells Influx exactly WHAT to delete
         predicate: '_measurement="furnace_telemetry"'
       }),
     });
 
-    if (!response.ok) {
+    if (response.status === 204) {
+      console.log("Successfully purged data from", startISO, "to", stopISO);
+      return { success: true };
+    } else {
       const errorText = await response.text();
-      throw new Error(`InfluxDB Delete Error: ${errorText}`);
+      console.error("Purge failed with status:", response.status, errorText);
+      return { success: false };
     }
-
-    console.log("Purge Success:", startISO, "to", stopISO);
-    return { success: true };
   } catch (error) {
-    console.error("Purge Request Failed:", error);
-    return { success: false, error };
+    console.error("Network Error during Purge:", error);
+    return { success: false };
   }
 };
 /**
@@ -123,6 +123,64 @@ export const fetchLatestFurnaceData = async (): Promise<any[]> => {
       },
       error: (err) => {
         console.error("Fetch Latest Error:", err);
+        resolve([]);
+      },
+      complete: () => resolve(results),
+    });
+  });
+};
+
+export const fetchRecentLiveData = async (range = "-1h") => {
+  if (!url || !org) return [];
+
+  const fluxQuery = `
+    from(bucket: "${bucket}")
+      |> range(start: ${range})
+      |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
+      |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> sort(columns: ["_time"], desc: false)
+  `;
+
+  const results: any[] = [];
+  const queryApi = influxClient!.getQueryApi(org);
+
+  return new Promise((resolve) => {
+    queryApi.queryRows(fluxQuery, {
+      next(row, tableMeta) {
+        results.push(tableMeta.toObject(row));
+      },
+      error: (err) => {
+        console.error("Backfill Error:", err);
+        resolve([]);
+      },
+      complete: () => resolve(results),
+    });
+  });
+};
+export const fetchLiveBackfill = async (range = "-1h") => {
+  if (!url || !org) return [];
+
+  const fluxQuery = `
+    from(bucket: "${bucket}")
+      |> range(start: ${range})
+      |> filter(fn: (r) => r["_measurement"] == "furnace_telemetry")
+      |> filter(fn: (r) => r["_field"] == "t1" or r["_field"] == "t2" or r["_field"] == "t3" or r["_field"] == "t4")
+      |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+      |> sort(columns: ["_time"], desc: false)
+      |> limit(n: 100)
+  `;
+
+  const results: any[] = [];
+  const queryApi = influxClient!.getQueryApi(org);
+
+  return new Promise((resolve) => {
+    queryApi.queryRows(fluxQuery, {
+      next(row, tableMeta) {
+        results.push(tableMeta.toObject(row));
+      },
+      error: (err) => {
+        console.error("Live Backfill Error:", err);
         resolve([]);
       },
       complete: () => resolve(results),

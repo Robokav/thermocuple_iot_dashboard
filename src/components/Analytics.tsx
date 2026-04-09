@@ -13,13 +13,30 @@ import { Line } from 'react-chartjs-2';
 import Papa from 'papaparse';
 import { useMqtt } from '../contexts/MqttContext';
 import { FurnaceData } from '../types';
-import { queryHistoricalData, purgeHistoricalData } from '../lib/influx';
+import { queryHistoricalData, purgeHistoricalData, fetchLiveBackfill} from '../lib/influx';
 import { HistoryChart } from './HistoryChart';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export const Analytics: React.FC = () => {
   const { furnaces, telemetryHistory, clearHistory } = useMqtt();
+  const [backfillData, setBackfillData] = useState<any[]>([]);
+  useEffect(() => {
+    const loadPersistence = async () => {
+      // Fetch last 30 minutes of real data from Influx
+      const history = await fetchLiveBackfill("-30m"); 
+      
+      // Convert Influx format to match your FurnaceData type
+      const formatted =(history as any[]).map((row: any) => ({
+        timestamp: new Date(row._time).getTime(),
+        temps: [row.t1, row.t2, row.t3, row.t4]
+      }));
+      
+      setBackfillData(formatted);
+    };
+
+    loadPersistence();
+  }, []);
   
   // View State
   const [view, setView] = useState<'live' | 'historical'>('live');
@@ -54,9 +71,23 @@ export const Analytics: React.FC = () => {
 
   // --- LOGIC: RELATIVE TIME (0s Start) ---
   const liveHistory = useMemo(() => {
-    if (!activeFurnace || !telemetryHistory[activeFurnace.chipId]) return [];
-    return telemetryHistory[activeFurnace.chipId];
-  }, [activeFurnace, telemetryHistory]);
+if (!activeFurnace) return [];
+  
+  // 1. Get the volatile MQTT history
+  const mqttData = telemetryHistory[activeFurnace.chipId] || [];
+  
+  // 2. Determine when MQTT data starts so we don't overlap
+  const firstMqttTime = mqttData.length > 0 ? mqttData[0].timestamp : Infinity;
+  
+  // 3. Filter backfill to only include things before MQTT started
+  const filteredBackfill = backfillData.filter(d => d.timestamp < firstMqttTime);
+
+  // 4. Merge them!
+  const combined = [...filteredBackfill, ...mqttData];
+  
+  // 5. Keep the window manageable (last 100 points)
+  return combined.slice(-100);
+}, [activeFurnace, telemetryHistory, backfillData]);
   
   const latestData = liveHistory[liveHistory.length - 1];
   const currentTemp = latestData?.temps[selectedSensor];
@@ -65,7 +96,7 @@ export const Analytics: React.FC = () => {
 // Determine status text
 const displayValue = hasValidData 
   ? currentTemp.toFixed(2) 
-  : "DISCONNECTED";
+  : backfillData.length > 0 ? "STALE" : "DISCONNECTED";
   const liveLabels = useMemo(() => {
     if (liveHistory.length === 0) return [];
     const startTime = liveHistory[0].timestamp;
